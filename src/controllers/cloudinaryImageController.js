@@ -45,17 +45,60 @@ export async function uploadImageController(req, res) {
 }
 
 export async function getImagesController(req, res) {
+  /* supported paramaters to filter result:
+            page ,
+            limit (amount of data per page),
+            sortBy (field to sort the data by, e.g, when it was created, last updated, name, etc)
+            sortOrder (ascending or descending order)
+    */
   try {
-    const allImages = await ImageModel.find();
-    if (!allImages || allImages.length === 0) {
+    const totalImages = await ImageModel.countDocuments();
+    if (totalImages === 0) {
       return res.status(404).json({
         message: "No images found",
       });
     }
+
+    const defaultPage = 1; // default to page 1
+    const defaultLimit = 3;
+
+    let currentPage = parseInt(req.query.page) || defaultPage; // get the client current page if it exists or default to page 1 if it doesnt exist
+    let limit = parseInt(req.query.limit) || defaultLimit; // get the client requested limit if it exists or default to the default limit if it doesnt exist
+
+    const skip = (currentPage - 1) * limit; // set the amount of data to not return when page changes
+    const sortBy = req.params.sortBy || "createdAt"; // field to sort the data by
+    const sortOrder = req.params.sortOrder === "asc" ? 1 : -1; // ascending order = 1, descending order = -1
+    const totalPages = Math.ceil(totalImages / limit);
+    const sortMethodObject = {};
+    sortMethodObject[sortBy] = sortOrder;
+
+    // validate the current page to ensure it is within the supported amount
+    if (currentPage < defaultPage) {
+      currentPage = defaultPage;
+    }
+    // validate the client limit to ensure it is within the supported amount
+    if (limit < 1 || limit > totalImages) {
+      limit = defaultLimit;
+    }
+
+    const allImages = await ImageModel.find()
+      .sort(sortMethodObject)
+      .skip(skip)
+      .limit(limit);
+    if (!allImages) {
+      return res.status(404).json({
+        message:
+          "No images found with that query, check your parameters and try again",
+      });
+    }
+
     res.status(200).json({
       success: true,
       message: "Successfully found all images",
-      images: allImages,
+      currentPage,
+      totalPages,
+      totalImages,
+      data: allImages,
     });
   } catch (err) {
     console.error("Error occured while trying to get the images: ", err);
@@ -70,7 +113,7 @@ export async function getImagesController(req, res) {
 export async function deleteImageController(req, res) {
   try {
     const userId = req.userInfo.userId;
-    const imageToDeleteId = req.params.imageId; // imageId is gotten from  the requeset parameters 
+    const imageToDeleteId = req.params.imageId; // imageId is gotten from  the requeset parameters
 
     // check if the image exist
     const imageObject = await ImageModel.findById(imageToDeleteId);
@@ -85,7 +128,8 @@ export async function deleteImageController(req, res) {
     if (imageObject.uploadedBy.toString() !== userId) {
       return res.status(400).json({
         success: false,
-        message: "You are not authorised to delete the image,You did not upload it",
+        message:
+          "You are not authorised to delete the image,You did not upload it",
       });
     }
 
