@@ -60,7 +60,7 @@ export async function getImagesController(req, res) {
     }
 
     const defaultPage = 1; // default to page 1
-    const defaultLimit = 3;
+    const defaultLimit = 5;
 
     let currentPage = parseInt(req.query.page) || defaultPage; // get the client current page if it exists or default to page 1 if it doesnt exist
     let limit = parseInt(req.query.limit) || defaultLimit; // get the client requested limit if it exists or default to the default limit if it doesnt exist
@@ -68,7 +68,6 @@ export async function getImagesController(req, res) {
     const skip = (currentPage - 1) * limit; // set the amount of data to not return when page changes
     const sortBy = req.params.sortBy || "createdAt"; // field to sort the data by
     const sortOrder = req.params.sortOrder === "asc" ? 1 : -1; // ascending order = 1, descending order = -1
-    const totalPages = Math.ceil(totalImages / limit);
     const sortMethodObject = {};
     sortMethodObject[sortBy] = sortOrder;
 
@@ -80,6 +79,8 @@ export async function getImagesController(req, res) {
     if (limit < 1 || limit > totalImages) {
       limit = defaultLimit;
     }
+
+    const totalPages = Math.ceil(totalImages / limit);
 
     const allImages = await ImageModel.find()
       .sort(sortMethodObject)
