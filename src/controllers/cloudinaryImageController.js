@@ -82,10 +82,9 @@ export async function getImagesController(req, res) {
 
     const totalPages = Math.ceil(totalImages / limit);
 
-    const allImages = await ImageModel.find()
-      .sort(sortMethodObject)
-      .skip(skip)
-      .limit(limit);
+    const allImages = await ImageModel.find() //get all images with the following clause: 👇
+      .sort(sortMethodObject)// sort imags by their filter field (e.g CreatedAt) in Order specified(ascending or decending order)
+      .limit(limit); //only return the specified number (limit) of data per page
     if (!allImages) {
       return res.status(404).json({
         message:
